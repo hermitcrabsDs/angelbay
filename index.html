@@ -1,0 +1,684 @@
+{% set retailProductsPropertires = crm_property_definition("recipes", "retail_product") %}
+{% set foodProductsPropertires = crm_property_definition("recipes", "foodservice_product") %}
+
+{% set timeFilterPropertires = crm_property_definition("recipes", "time_filter") %}
+{% set productsPropertires = crm_property_definition("recipes", "retail_product") %}
+{% set dietaryPropertires = crm_property_definition("recipes", "dietary") %}
+{% set ethnicityPropertires = crm_property_definition("recipes", "ethnicity") %}
+
+
+
+{% set batch = 9 %}
+{% set page_num = 1 %}
+{% set limit = batch %}
+{% set offset = 0 %} 
+
+{% if request.query_dict.page > 1 %}
+{% set page_num = request.query_dict.page|int  %}
+{% set limit = batch %} 
+{% set offset = page_num|add(-1) * batch %}
+{% endif %}
+
+{% if request.query_dict.cookingTime %}
+    {% set cookingTime = "&time_filter__in=" ~ request.query_dict.cookingTime  %}
+    {% set navCookingTime = "&cookingTime=" ~ request.query_dict.cookingTime %}
+{% endif %}
+
+{% if module.recipe_type == "Retail" %}
+    {% if request.query_dict.product %}
+        {% set product = "&retail_product__contains=" ~ request.query_dict.product  %}
+        {% set navProduct = "&product=" ~ request.query_dict.cookingTime %}
+    {% endif %}
+{% else %}
+    {% if request.query_dict.product %}
+        {% set product = "&foodservice_product__contains=" ~ request.query_dict.product  %}
+        {% set navProduct = "&product=" ~ request.query_dict.cookingTime %}
+    {% endif %}
+{% endif %}
+
+{% if request.query_dict.dietary %}
+    {% set dietary = "&dietary__contains=" ~ request.query_dict.dietary  %}
+    {% set navDietary = "&dietary=" ~ request.query_dict.dietary %}
+{% endif %}
+
+{% if request.query_dict.cusine %}
+    {% set cusine = "&ethnicity__contains=" ~ request.query_dict.cusine  %}
+    {% set navCusine = "&cusine=" ~ request.query_dict.cusine %}
+{% endif %}
+
+
+
+{% set query = "&order=name&limit=" ~ batch ~ "&offset=" ~ offset ~ "&division__in=" ~ module.recipe_type %}
+
+{% set query =  cookingTime ~ product ~ dietary ~ cusine ~ query %}
+{% set navQuery = navCookingTime ~ navProduct ~ navDietary ~ navCusine %}
+
+{% set items = "name,cook_time,dynamic_page_path,prep_time,serves,recipe_image" %}
+{% set recipes = crm_objects('recipes', query , items ) %}
+
+<div class="{{ name }} recipes_filter_wrapper">
+    <div style="display:none">
+        {{ query }}<br>
+        {{ navQuery }}
+    </div>
+    <div class="page-center">
+        <div class="recipes_filter">
+            <div class="recipes_filter_row">
+                <div class="recipes_filter_column recipes_product_filter">
+                    <select class="filters-product">
+                        <option value="">Products</option>
+                        {% if module.recipe_type == "Retail" %}
+                            {% for product in retailProductsPropertires.options %}
+                                <option value="{{ product.value }}">{{ product.label }}</option>
+                            {% endfor %}
+                        {% else %}
+                        
+                            {% for product in foodProductsPropertires.options %}
+                                <option value="{{ product.value }}">{{ product.label }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="recipes_filter_column recipes_cuisine_filter">
+                    <select class="filters-cusine">
+                        <option value="">Cuisine</option>
+                        {% for item in ethnicityPropertires.options %}
+                            <option value="{{ item.value }}">{{ item.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="recipes_filter_column recipes_dietary_filter">
+                    <select class="filters-dietary">
+                        <option value="">Dietary</option>
+                       {% for item in dietaryPropertires.options %}
+                            <option value="{{ item.value }}">{{ item.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="recipes_filter_column recipes_cooking_filter">
+                    <select class="filters-cooking-time" name="cookingTime">
+                        <option value="">Cooking time</option>
+                        {% for ctime in timeFilterPropertires.options %}
+                            <option value="{{ ctime.value }}">{{ ctime.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <!-- FEATURED RECIPES -->
+        {% set featuredRecipes = crm_objects('recipes', "&limit=3&feature_recipe__in=Yes" , items ) %}
+        {% if not request.query_dict.cookingTime || not request.query_dict.product || featuredRecipes.total > 0 %}
+       
+        <div class="featured_recipes_row" id="featuredSection">
+            <div class="title"><h2 class="heading">Featured recipes</h2></div>
+            <div class="featuredrecipes_row">
+                <div class="featured_recipes_column">
+                    {% for item in featuredRecipes.results %}
+                    <article class="featured_recipes_column_inner">
+                        <a href="{{ content.absolute_url ~"/"~ item.dynamic_page_path }}">
+                            <div class="featured_recipe_image">
+                                <img src="{{ item.recipe_image }}" alt="{{ item.name }}" loading="lazy">
+                            </div>
+                            <div class="featured_recipe_title">
+                                <h3>{{ item.name }}</h3>
+                            </div>
+                            <div class="featured_recipe_details">
+                                <div class="featured_recipe_details_col">
+                                    <label>Serves</label>
+                                    <span>{{ item.serves }}</span>
+                                </div>
+                                <div class="featured_recipe_details_col">
+                                    <label>Prep time</label>
+                                    <span>{{ item.prep_time }} mins</span>
+                                </div>
+                                <div class="featured_recipe_details_col">
+                                    <label>Cook time </label>
+                                    <span>{{ item.cook_time }} mins</span>
+                                </div>
+                            </div>                        
+                            <div class="view_recipe">
+                                <a href="" rel="noreferrer" class="view_recipe_link">
+                                    View recipe
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z"/></svg>
+                                </a>
+                            </div>
+                        </a> 
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <!-- ALL RECIPES -->
+        <div class="all_recipes_row">
+            <div class="title"><h2 class="heading">All Recipes</h2></div>
+            <div class="allrecipes_row allrecipes_filter" id="allRecipes">
+                {% for item in recipes.results %}
+                <div class="allrecipes_column recipes_col" data-product="product{{ loop.index }}">
+                    <article class="allrecipes_column_inner">
+                        <a href="{{ content.absolute_url ~"/"~ item.dynamic_page_path }}">
+                            <div class="recipe_image">
+                                <img src="{{ item.recipe_image }}" alt="{{ item.name }}" loading="lazy">
+                            </div>
+                            <div class="recipe_title">
+                                <h3 id="loaded-cheeseburger"> {{ item.name }}</h3>
+                            </div>
+                            <div class="recipe_details">
+                                <div class="recipe_details_col">
+                                    <label>Serves</label>
+                                    <span>{{ item.serves }}</span>
+                                </div>
+                                <div class="recipe_details_col">
+                                    <label>Prep time</label>
+                                    <span>{{ item.prep_time }} mins</span>
+                                </div>
+                                <div class="recipe_details_col">
+                                    <label>Cook time </label>
+                                    <span>{{ item.cook_time }} mins</span>
+                                </div>
+                            </div>
+
+                        </a>
+                    </article>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="container" id="loading">
+                <div class="loading">
+                    <div class="loading__letter">L</div>
+                    <div class="loading__letter">o</div>
+                    <div class="loading__letter">a</div>
+                    <div class="loading__letter">d</div>
+                    <div class="loading__letter">i</div>
+                    <div class="loading__letter">n</div>
+                    <div class="loading__letter">g</div>
+                    <div class="loading__letter">.</div>
+                    <div class="loading__letter">.</div>
+                    <div class="loading__letter">.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="load-more">
+            {% if recipes.has_more == "true" %}
+            <a class="button load-more-button" id="load-more_btn" href="{{ content.absolute_url }}?{{ navQuery }}&page={{ page_num|add(1) }}">load more</a>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% require_js %}
+<script>
+    let product = "";
+    let cusine = "";
+    let dietary = "";
+    let cookingTime ="" ;
+    const domain = "{{ content.absolute_url }}";
+    let url;
+    const featuredSection = document.getElementById('featuredSection')
+
+
+    function getContent(path){
+        document.getElementById('loading').style.display = "block";
+        fetch(path).then( res => {
+            return res.text()
+        }).then( data => {
+            const parser = new DOMParser();
+            const Dom = parser.parseFromString(data, "text/html");
+            console.log(Dom.querySelector('.recipes_filter_wrapper').innerHTML)
+            let content = Dom.querySelector('#allRecipes').innerHTML
+            let loadMore = null 
+            if(Dom.querySelector('.load-more').innerHTML){
+                loadMore = Dom.querySelector('.load-more').innerHTML
+            }
+            if(content.trim().length == 0){
+                document.querySelector('#allRecipes').insertAdjacentHTML("beforeend", '<h3 style="text-align:center;width: 100%;">No recipes are found</h3>');
+                document.getElementById('loading').style.display = "none";
+            } else {
+                document.querySelector('#allRecipes').insertAdjacentHTML("beforeend", content);
+                document.getElementById('loading').style.display = "none";
+            }
+            if(loadMore == null ){
+                document.querySelector('.load-more').innerHTML = "";
+            } else {
+                document.querySelector('.load-more').innerHTML = loadMore;
+            }
+        }).catch(error => {
+            console.log(error)
+        })
+    }
+
+    document.querySelector('.load-more').addEventListener( 'click', function ( event ) {
+        event.preventDefault();
+        if( event.target.id == 'load-more_btn' ) {
+            let path = event.target.getAttribute('href')
+            getContent(path)
+        };
+    });
+    document.querySelector('.filters-cooking-time').addEventListener('change', function(e){
+        featuredSection.style.display = "none"
+        cookingTime = encodeURIComponent(this.value.trim())
+        let path = `${domain}?cookingTime=${cookingTime}&product=${product}&dietary=${dietary}&cusine=${cusine}`;
+        document.querySelector('#allRecipes').innerHTML = "";
+        getContent(path)
+    })
+    document.querySelector('.filters-product').addEventListener('change', function(e){
+        featuredSection.style.display = "none"
+        product = encodeURIComponent(this.value.trim())
+        let path = `${domain}?cookingTime=${cookingTime}&product=${product}&dietary=${dietary}&cusine=${cusine}`;
+        document.querySelector('#allRecipes').innerHTML = "";
+        getContent(path)
+    })
+     document.querySelector('.filters-dietary').addEventListener('change', function(e){
+        featuredSection.style.display = "none"
+        dietary = encodeURIComponent(this.value.trim())
+        let path = `${domain}?cookingTime=${cookingTime}&product=${product}&dietary=${dietary}&cusine=${cusine}`;
+        document.querySelector('#allRecipes').innerHTML = "";
+        getContent(path)
+    })
+    document.querySelector('.filters-cusine').addEventListener('change', function(e){
+        featuredSection.style.display = "none"
+        cusine = encodeURIComponent(this.value.trim())
+        let path = `${domain}?cookingTime=${cookingTime}&product=${product}&dietary=${dietary}&cusine=${cusine}`;
+        document.querySelector('#allRecipes').innerHTML = "";
+        getContent(path)
+    })
+
+
+</script>
+{% end_require_js %}
+
+
+
+{% require_css %}
+<style>
+    {% scope_css %}
+    div#loading {
+        display: none;
+        margin-top: 100px;
+        margin-bottom: 100px;
+    }
+    .loading {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+    }
+    .loading__letter {
+        font-size: 50px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #fec468;
+        animation-name: bounce;
+        animation-duration: 2s;
+        animation-iteration-count: infinite;
+        font-weight: bold;
+    }
+
+    .loading__letter:nth-child(2) {
+        animation-delay: .1s;	
+    }
+    .loading__letter:nth-child(3) {
+        animation-delay: .2s;
+    }
+    .loading__letter:nth-child(4) {
+        animation-delay: .3s;	
+    }
+    .loading__letter:nth-child(5) {
+        animation-delay: .4s;
+    }
+    .loading__letter:nth-child(6) {
+        animation-delay: .5s;	
+    }
+    .loading__letter:nth-child(7) {
+        animation-delay: .6s;
+    }
+    .loading__letter:nth-child(8) {
+        animation-delay: .8s;
+    }
+    .loading__letter:nth-child(9) {
+        animation-delay: 1s;
+    }
+    .loading__letter:nth-child(10) {
+        animation-delay: 1.2s;
+    }
+
+    @keyframes bounce {
+        0% {
+            transform: translateY(0px)
+        }
+        40% {
+            transform: translateY(-40px);
+        }
+        80%,
+        100% {
+            transform: translateY(0px);
+        }
+    }
+
+
+    @media (max-width: 700px) {
+        .loading__letter {
+            font-size: 50px;
+        }
+    }
+
+    @media (max-width: 340px) {
+        .loading__letter {
+            font-size: 40px;
+        }
+    }
+
+
+    .recipes_filter_wrapper{
+        {% if module.style.background_type == "image" %}
+        {{ module.style.background_image.css }}
+        {% endif %}
+        {% if module.style.background_type == "color" %}
+        background-color: rgba({{ module.style.background_color.color|convert_rgb }},{{ module.style.background_color.opacity * 0.01 }});
+        {% endif %}
+        overflow: hidden;
+        padding-top: 88px;
+        padding-bottom: 162px;
+    }
+    .recipes_filter_wrapper .page-center {
+        max-width: 1645px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0 15px;
+    }
+    /* FEATURED RECIPES  */
+    .recipes_filter_wrapper .featuredrecipes_row {
+        display: flex;
+        flex-wrap: wrap;
+        padding-top: 100px;
+        padding-bottom: 42px;
+    }
+    .recipes_filter_wrapper .featured_recipes_column {
+        width: 33.33%;
+        background: #DBAD5A;
+    }
+    .recipes_filter_wrapper .featured_recipes_column_inner {
+        padding: 0 20px 50px;
+    }
+    .recipes_filter_wrapper .featured_recipe_image {
+        background-position: 50%;
+        background-repeat: no-repeat;
+        background-size: contain;
+        mask-image: url(https://21122028.fs1.hubspotusercontent-na1.net/hubfs/21122028/2023%20-%20Angel%20Bay%20Website/Brand/Images/Cut%20out%20shape%20mask.svg);
+        mask-position: center;
+        mask-repeat: no-repeat;
+        mask-size: contain;
+        height: 100%;
+        width: 100%;
+        position: relative;
+        left: 0;
+        top: -100px;
+        margin-bottom: -100px;
+        padding-bottom: 100%;
+        transform: rotate(-4deg);
+    }
+    .recipes_filter_wrapper .featured_recipe_image img {
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: rotate(4deg);
+    }
+    .recipes_filter_wrapper .featured_recipe_title {
+        margin-bottom: 15px;
+        margin-top: 15px;
+    }
+    .recipes_filter_wrapper .featured_recipe_title h3 {
+        font-size: 38px;
+        color: #262223;
+        line-height: 1.2;
+    }
+    .recipes_filter_wrapper .featured_recipe_details {
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 16px;
+        color: #262223;
+        font-weight: 700;
+        margin: 0 -15px;
+        margin-bottom: 10px;
+    }
+    .recipes_filter_wrapper .featured_recipe_details_col label { 
+        font-size: 17px;
+        letter-spacing: 1.65px;
+        text-transform: uppercase;
+        line-height: 1.5;
+    }
+    .recipes_filter_wrapper .featured_recipe_details_col {
+        padding: 0 15px;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 10px;
+    }
+    .recipes_filter_wrapper .view_recipe a {
+        letter-spacing: 1.12px;
+        color: #262223;
+        font-size: 19px;
+        font-weight: 700;
+        text-transform: uppercase;
+        line-height: 1.2;
+    }
+    .recipes_filter_wrapper .view_recipe svg {
+        width: 15px;
+        height: auto;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .recipes_filter_wrapper .view_recipe i {
+        margin-left: 10px;
+    }
+    .recipes_filter_wrapper .recipes_filter select {
+        border: 2px solid #262223;
+        border-radius: 10px;
+        padding: 16px 45px 16px 20px;
+        cursor: pointer;
+        -webkit-appearance: none;
+        background-image: url(https://21122028.fs1.hubspotusercontent-na1.net/hubfs/21122028/ANGEL%20BAY%20-%20POWER%20THEME%20-%20Feb2024/Image/angle-down.svg);
+        background-repeat: no-repeat;
+        background-position: 90% 50%;
+        background-size: 16px 16px;
+        background-color: #fff;
+        letter-spacing: 1.35px;
+        color: #262223;
+        font-weight: bold;
+        font-size: 22px;
+    }
+    .recipes_filter_wrapper .recipes_filter_row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 90px;
+    }
+    .recipes_filter_wrapper .recipes_filter_column {
+        padding: 0 18px;
+        margin-bottom: 22px;
+        width: 22%;
+    }
+    /* END FEATURED RECIPES  */
+    /* ALL recipe  */
+    .recipes_filter_wrapper .all_recipes_row {
+        padding-top: 42px;
+    }
+    .recipes_filter_wrapper .title .heading {
+        font-size: 60px;
+        line-height: 1;
+    }
+    .recipes_filter_wrapper .allrecipes_row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -10px;
+    }
+    .recipes_filter_wrapper .allrecipes_column {
+        width: 33.33%;
+        padding: 0 10px;
+        margin: 50px 0;
+        padding-top: 100px;
+    }
+    .recipes_filter_wrapper .title {
+        margin-bottom: 70px;
+    }
+
+    .recipes_filter_wrapper .allrecipes_column_inner {
+        background: #F5D774;
+        padding: 0 25px 48px;
+        min-height:100%;
+    }
+    .recipes_filter_wrapper .recipe_image {
+        background-position: 50%;
+        background-repeat: no-repeat;
+        background-size: contain;
+        mask-image: url(https://21122028.fs1.hubspotusercontent-na1.net/hubfs/21122028/2023%20-%20Angel%20Bay%20Website/Brand/Images/Cut%20out%20shape%20mask.svg);
+        mask-position: center;
+        mask-repeat: no-repeat;
+        mask-size: contain;
+        height: 100%;
+        width: 100%;
+        position: relative;
+        left: 0;
+        top: -100px;
+        margin-bottom: -100px;
+        padding-bottom: 100%;
+        transform:rotate(-4deg);
+    }
+    .recipes_filter_wrapper .recipe_image img {
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform:rotate(4deg);
+    }
+    .recipes_filter_wrapper .recipe_title {
+        margin-bottom: 30px;
+        margin-top: 30px;
+    }
+    .recipes_filter_wrapper .recipe_details {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -15px;
+    }
+    .recipes_filter_wrapper .recipe_details_col {
+        color: #262223;
+        font-weight: 700;
+        display: flex;
+        flex-direction: column;
+        padding: 0 15px;
+        font-size: 16px;
+    }
+    .recipes_filter_wrapper .recipe_details_col label{
+        letter-spacing: 1.65px;
+        text-transform: uppercase;
+        font-weight: bold;
+        font-size: 17px;
+        line-height: 1.5;
+    }
+    .recipes_filter_wrapper .load-more {
+        text-align: center;
+        margin-top: 35px;
+    }
+    .recipes_filter_wrapper .load-more .load-more-button {
+        border: none;
+        letter-spacing: 1.36px;
+        color: #262223;
+        font-weight: bold;
+        text-transform: uppercase;
+        background: #F5D774;
+        padding: 14px 30px;
+        cursor: pointer;
+        font-size: 23px;
+        border-radius: 8px;
+        font-size: 23px;
+        line-height: 1;
+        font-family:'Mont';
+    }
+    .recipes_filter_wrapper .recipe_title h3 {
+        font-size: 35px;
+        color: #262223;
+        line-height: 1.2;
+    }
+
+    .recipes_filter_wrapper .recipes_filter select {
+        text-transform:uppercase;
+    }
+
+    @media (min-width: 1025px){
+        .recipes_filter_wrapper .featured_recipe_title h3 {
+            max-width: 310px;
+        }
+    }
+    @media (max-width: 1024px){
+        .recipes_filter_wrapper .featured_recipe_title h3 {
+            font-size: 24px;
+        } 
+        .recipes_filter_wrapper .recipe_title h3 {
+            font-size: 24px;
+        }
+    }
+    @media (max-width: 767px){
+        .recipes_filter_wrapper{
+            padding-top: 88px;
+            padding-bottom: 80px;
+        }
+        .recipes_filter_wrapper .featured_recipes_column {
+            width: 100%;
+            background: #DBAD5A;
+            margin-bottom: 0;
+        }
+        .recipes_filter_wrapper .featured_recipes_column:not(:last-child) {
+            margin-bottom: 150px;
+        }
+        .recipes_filter_wrapper .allrecipes_column {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        .recipes_filter_wrapper .allrecipes_column:not(:last-child) {
+            margin-bottom: 50px;
+        }
+        .recipes_filter_wrapper .title {
+            margin-bottom: 40px;
+        }
+        .recipes_filter_wrapper .recipes_filter_row {
+            margin-bottom: 30px;
+        }
+        .share_creation_wrapper .ab-cutout {
+            max-height: 70%;
+        }
+        .recipes_filter_wrapper .title .heading {
+            font-size: 35px;
+        }
+        .recipes_filter_wrapper .featured_recipe_details {
+            justify-content: flex-start;
+        }
+        .recipes_filter_wrapper .allrecipes_column:not(:last-child) {
+            margin: 0;
+            margin-bottom: 40px;
+        }
+        .recipes_filter_wrapper .load-more .load-more-button {
+            font-size: 16px;
+        }
+        .recipes_filter_wrapper .featured_recipes_column_inner {
+            padding: 0 15px 50px;
+        }
+        .recipes_filter_wrapper .allrecipes_column_inner {
+            padding: 0 15px 48px;
+        }
+    }
+    /* END ALL recipe  */
+    {% end_scope_css %}
+</style>
+{% end_require_css %}
